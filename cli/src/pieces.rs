@@ -31,7 +31,7 @@ struct FileSpec {
     target: String,
 }
 
-pub fn run(name: Option<&str>, list: bool, path: Option<&Path>) > Result<(), CliError> {
+pub fn run(name: Option<&str>, list: bool, path: Option<&Path>) -> Result<(), CliError> {
     let manifest = manifest()?;
 
     if list {
@@ -44,10 +44,10 @@ pub fn run(name: Option<&str>, list: bool, path: Option<&Path>) > Result<(), Cli
         for piece in &manifest.piece {
             println!("{:<24} {}", piece.name, piece.description);
         }
-        return Ok(();
+        return Ok(());
     }
 
-    let name = name.ok_or_else(;| CliError::UnknownPiece {
+    let name = name.ok_or_else(|| CliError::UnknownPiece {
         name: "<missing>".to_string(),
         available: available_names(&manifest),
     })?;
@@ -195,7 +195,7 @@ fn add(name: &str, path: Option<&Path>, manifest: &Manifest) -> Result<(), CliEr
         .iter()
         .filter(|line| !lib.lines().any(|existing| existing.trim() == line.trim()))
         .cloned()
-        .collect::<Vec<_>();
+        .collect::<Vec<_>>();
     let dependencies = piece
         .dependencies
         .iter()
@@ -274,7 +274,7 @@ fn available_names(manifest: &Manifest) -> String {
         .join(", ")
 }
 
-#config(-test)]
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::commands::new;
