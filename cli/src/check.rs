@@ -4,6 +4,10 @@
 //! `scripts/enforce_hygiene.sh`, ported to Rust for cross-platform
 //! operation with no external script dependencies (shells out only for
 //! `git ls-files` and `cargo metadata`, which are required regardless).
+//!
+//! Canonical example selection is driven by `examples/catalog.toml`
+//! (see `context::canonical_example_names`); this module only consumes
+//! the already-filtered `ctx.examples` list.
 
 use crate::context::{example_dir, CheckContext};
 use anyhow::{Context, Result};
@@ -101,6 +105,29 @@ pub fn run_generated(project: &Path) -> Result<()> {
     let description = Regex::new(r#"(?m)^description\s*=\s*"([^"]+)""#).unwrap();
     if !description.is_match(&manifest) {
         anyhow::bail!("generated project Cargo.toml needs a non-empty description");
+    }
+
+    // Check that [lib] has crate-type containing "cdylib".
+    // Extract the text from "[lib]" to the next section header (or EOF) using
+    // plain string operations - the `regex` crate does not support lookahead.
+    let has_cdylib = if let Some(lib_start) = manifest.find("[lib]") {
+        let after_lib = &manifest[lib_start..];
+        // The section ends at the next line that starts with '[' (a new table),
+        // skipping the "[lib]" header line itself.
+        let section_body = after_lib
+            .lines()
+            .skip(1) // skip the "[lib]" line itself
+            .take_while(|l| !l.trim_start().starts_with('['))
+            .any(|l| l.contains("cdylib"));
+        section_body
+    } else {
+        false
+    };
+    if !has_cdylib {
+        anyhow::bail!(
+            "generated project Cargo.toml is missing crate-type = [\"cdylib\", \"rlib\"] under [lib] \
+             (required for `stellar contract build` to produce a .wasm artifact)"
+        );
     }
 
     let readme = fs::read_to_string(project.join("README.md"))?;
